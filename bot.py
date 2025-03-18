@@ -19,7 +19,7 @@ PIXABAY_API_KEY = os.getenv("PIXABAY_API_KEY")
 
 # Ініціалізація об'єктів Bot і Dispatcher
 bot = Bot(token=BOT_TOKEN)
-dp = Dispatcher(bot)  # Зараз передаємо bot в Dispatcher під час створення
+dp = Dispatcher.from_bot(bot)  # Використовуємо from_bot для Dispatcher
 
 # Налаштовуємо логування
 logging.basicConfig(level=logging.INFO)
@@ -74,7 +74,11 @@ async def send_random_photo_with_phrase(message: types.Message):
     photo_url = get_random_image()
     phrase = random.choice(random_phrases)
     if photo_url:
-        await message.answer_photo(photo_url, caption=phrase)
+        markup = InlineKeyboardMarkup().add(
+            InlineKeyboardButton("😍 Лайк", callback_data="like"),
+            InlineKeyboardButton("😲 Ух ти!", callback_data="wow")
+        )
+        await message.answer_photo(photo_url, caption=phrase, reply_markup=markup)
     else:
         await message.answer("Не вдалося знайти фото. Спробуй ще раз пізніше.")
 
@@ -117,6 +121,15 @@ async def scheduled_photo_send():
         except Exception as e:
             logging.error(f"Не вдалося надіслати фото користувачу {user_id}: {e}")
 
+# Обробка натискання кнопок (реакції)
+@dp.callback_query_handler(lambda c: c.data in ["like", "wow"])
+async def process_callback(callback_query: types.CallbackQuery):
+    reaction = callback_query.data
+    if reaction == "like":
+        await bot.answer_callback_query(callback_query.id, text="Ти лайкнув це фото! ❤️")
+    elif reaction == "wow":
+        await bot.answer_callback_query(callback_query.id, text="Вау! Це неймовірно! 😲")
+
 # Запуск планувальника в асинхронному циклі
 async def on_start():
     create_table()  # Переконатися, що таблиця є в базі даних
@@ -125,9 +138,9 @@ async def on_start():
     await dp.start_polling()
 
 # Регістрація команд
-dp.message_handler(commands=["start"])(start_handler)  # Оновлений метод реєстрації
-dp.message_handler(commands=["sendphoto"])(send_photo_handler)
-dp.message_handler(commands=["sendnow"])(send_now_handler)
+dp.message(commands=["start"])(start_handler)  # Оновлений метод реєстрації
+dp.message(commands=["sendphoto"])(send_photo_handler)
+dp.message(commands=["sendnow"])(send_now_handler)
 
 # Запуск бота
 if __name__ == "__main__":
