@@ -91,12 +91,17 @@ async def send_random_photo():
 
 # Налаштування планувальника для регулярної відправки фото
 scheduler = AsyncIOScheduler()
-scheduler.add_job(send_random_photo, 'interval', hours=24)  # Відправка фото кожні 24 години
-scheduler.start()
+
+async def start_scheduler():
+    scheduler.add_job(send_random_photo, 'interval', hours=24)  # Відправка фото кожні 24 години
+    scheduler.start()
 
 # Запуск бота через asyncio
 async def on_start():
     try:
+        # Запуск планувальника
+        await start_scheduler()
+
         # Реєстрація хендлерів
         await dp.start_polling(bot)
     except exceptions.BotBlocked:
