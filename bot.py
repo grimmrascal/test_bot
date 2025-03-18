@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Читаємо токен і налаштування з .env файлу
-TOKEN = os.getenv("TOKEN")
+TOKEN = os.getenv("BOT_TOKEN")
 DB_PATH = os.getenv("DB_PATH", "users.db")
 PIXABAY_API_KEY = os.getenv("PIXABAY_API_KEY")
 
