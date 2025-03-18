@@ -9,6 +9,7 @@ import requests
 import sqlite3
 from dotenv import load_dotenv
 import random
+from aiogram.filters import Text  # Імпорт фільтра Text
 
 # Завантаження .env файлу
 load_dotenv()
