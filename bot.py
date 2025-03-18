@@ -1,8 +1,9 @@
 import logging
 import os
+import asyncio
 from aiogram import Bot, Dispatcher, types
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
-from aiogram.utils import executor
+from aiogram.utils import exceptions
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 import requests
 import sqlite3
@@ -18,7 +19,7 @@ BOT_TOKEN = os.getenv("BOT_TOKEN")
 
 # Ініціалізація бота та диспетчера
 bot = Bot(token=BOT_TOKEN)
-dp = Dispatcher(bot)
+dp = Dispatcher()
 
 # Налаштування логування
 logging.basicConfig(level=logging.INFO)
@@ -92,6 +93,19 @@ scheduler = AsyncIOScheduler()
 scheduler.add_job(send_random_photo, 'interval', hours=24)  # Відправка фото кожні 24 години
 scheduler.start()
 
-# Запуск бота
+# Запуск бота через asyncio
+async def on_start():
+    try:
+        # Реєстрація хендлерів
+        await dp.start_polling(bot)
+    except exceptions.BotBlocked:
+        print("Bot is blocked.")
+    except exceptions.ChatNotFound:
+        print("Chat not found.")
+    except exceptions.NetworkError:
+        print("Network error.")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
 if __name__ == "__main__":
-    executor.start_polling(dp, skip_updates=True)
+    asyncio.run(on_start())  # Запуск через asyncio
