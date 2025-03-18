@@ -49,7 +49,7 @@ def get_random_image():
     return None
 
 # Команда /start
-@dp.message(commands=["start"])
+@dp.message(Text("start"))
 async def start_handler(message: types.Message):
     # Перевірка, чи є користувач в базі даних
     cursor.execute("SELECT * FROM users WHERE telegram_id = ?", (message.from_user.id,))
