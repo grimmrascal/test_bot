@@ -19,7 +19,7 @@ PIXABAY_API_KEY = os.getenv("PIXABAY_API_KEY")
 
 # Ініціалізація об'єктів Bot і Dispatcher
 bot = Bot(token=BOT_TOKEN)
-dp = Dispatcher()
+dp = Dispatcher(bot)  # Зараз передаємо bot в Dispatcher під час створення
 
 # Налаштовуємо логування
 logging.basicConfig(level=logging.INFO)
@@ -125,9 +125,9 @@ async def on_start():
     await dp.start_polling()
 
 # Регістрація команд
-dp.register_message_handler(start_handler, commands=["start"])
-dp.register_message_handler(send_photo_handler, commands=["sendphoto"])
-dp.register_message_handler(send_now_handler, commands=["sendnow"])
+dp.message_handler(commands=["start"])(start_handler)  # Оновлений метод реєстрації
+dp.message_handler(commands=["sendphoto"])(send_photo_handler)
+dp.message_handler(commands=["sendnow"])(send_now_handler)
 
 # Запуск бота
 if __name__ == "__main__":
