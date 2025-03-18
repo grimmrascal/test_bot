@@ -78,7 +78,6 @@ async def send_random_photo_with_phrase(message: types.Message):
         await message.answer("Не вдалося знайти фото. Спробуй ще раз пізніше.")
 
 # Команда старт
-@dp.message_handler(commands=["start"])
 async def start_handler(message: types.Message):
     user_id = message.from_user.id
     first_name = message.from_user.first_name
@@ -88,12 +87,10 @@ async def start_handler(message: types.Message):
     await message.answer(f"Привіт, {first_name}! Я бот, готовий надсилати тобі рандомні фото.")
 
 # Команда для надсилання фото
-@dp.message_handler(commands=["sendphoto"])
 async def send_photo_handler(message: types.Message):
     await send_random_photo_with_phrase(message)
 
 # Команда для надсилання фото негайно
-@dp.message_handler(commands=["sendnow"])
 async def send_now_handler(message: types.Message):
     await send_random_photo_with_phrase(message)
 
@@ -121,6 +118,11 @@ async def scheduled_photo_send():
 
 # Запуск планувальника
 scheduler.start()
+
+# Регістрація команд
+dp.register_message_handler(start_handler, commands=["start"])
+dp.register_message_handler(send_photo_handler, commands=["sendphoto"])
+dp.register_message_handler(send_now_handler, commands=["sendnow"])
 
 # Запуск бота
 if __name__ == "__main__":
