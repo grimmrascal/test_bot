@@ -19,7 +19,7 @@ PIXABAY_API_KEY = os.getenv("PIXABAY_API_KEY")
 
 # Ініціалізація об'єктів Bot і Dispatcher
 bot = Bot(token=BOT_TOKEN)
-dp = Dispatcher.from_bot(bot)  # Використовуємо from_bot для Dispatcher
+dp = Dispatcher(bot)  # Тепер передаємо bot безпосередньо в Dispatcher
 
 # Налаштовуємо логування
 logging.basicConfig(level=logging.INFO)
