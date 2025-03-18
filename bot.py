@@ -9,7 +9,7 @@ import requests
 import sqlite3
 from dotenv import load_dotenv
 import random
-from aiogram.filters import Text  # Імпорт фільтра Text
+from aiogram.filters import Command  # Використовуємо Command для обробки команд
 
 # Завантаження .env файлу
 load_dotenv()
@@ -50,7 +50,7 @@ def get_random_image():
     return None
 
 # Команда /start
-@dp.message(Text("start"))
+@dp.message(Command("start"))  # Використовуємо Command для обробки /start
 async def start_handler(message: types.Message):
     # Перевірка, чи є користувач в базі даних
     cursor.execute("SELECT * FROM users WHERE telegram_id = ?", (message.from_user.id,))
