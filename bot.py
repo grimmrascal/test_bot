@@ -8,6 +8,7 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from dotenv import load_dotenv
+from aiogram.filters import Command
 
 # Завантажуємо змінні середовища з .env
 load_dotenv()
@@ -92,7 +93,7 @@ async def send_photos():
             await asyncio.sleep(0.5)
 
 # Обробка команди /start
-@dp.message(commands=["start"])
+@dp.message(Command("start"))
 async def start_handler(message: types.Message):
     await add_user(message.from_user.id, message.from_user.first_name, message.from_user.username)
     await message.answer("Привіт! Я буду надсилати тобі приємні фото та повідомлення! 😊")
