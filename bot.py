@@ -1,123 +1,143 @@
-import asyncio
 import logging
-import requests
-import sqlite3
 import os
 import random
+import sqlite3
+import requests
 from aiogram import Bot, Dispatcher, types
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.contrib.middlewares.logging import LoggingMiddleware
+from aiogram.utils import executor
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.interval import IntervalTrigger
 from dotenv import load_dotenv
-from aiogram.filters import Command
 
-# Завантажуємо змінні середовища з .env
 load_dotenv()
-BOT_TOKEN = os.getenv("BOT_TOKEN")
-PIXABAY_API_KEY = os.getenv("PIXABAY_API_KEY")
-DB_PATH = "users.db"
 
-# Логування
+# Читаємо токен і налаштування з .env файлу
+TOKEN = os.getenv("TOKEN")
+DB_PATH = os.getenv("DB_PATH", "users.db")
+PIXABAY_API_KEY = os.getenv("PIXABAY_API_KEY")
+
+bot = Bot(token=TOKEN)
+dp = Dispatcher(bot)
+dp.middleware.setup(LoggingMiddleware())
+
+# Налаштовуємо логування
 logging.basicConfig(level=logging.INFO)
 
-# Ініціалізація бота та диспетчера
-bot = Bot(token=BOT_TOKEN)
-dp = Dispatcher()
-
-# Ініціалізація планувальника
-scheduler = AsyncIOScheduler()
-
-# Функція для створення таблиці користувачів у SQLite
-def init_db():
+# Ініціалізуємо базу даних SQLite
+def create_table():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("""
-        CREATE TABLE IF NOT EXISTS users (
-            user_id INTEGER PRIMARY KEY,
-            first_name TEXT,
-            username TEXT
-        )
+    CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER UNIQUE,
+        first_name TEXT,
+        last_name TEXT,
+        username TEXT
+    )
     """)
     conn.commit()
     conn.close()
 
-# Функція для додавання користувачів у БД
-async def add_user(user_id, first_name, username):
+create_table()
+
+# Функція для додавання користувача до бази
+async def add_user(user_id, first_name, last_name, username):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    cursor.execute("INSERT OR IGNORE INTO users (user_id, first_name, username) VALUES (?, ?, ?)",
-                   (user_id, first_name, username))
+    cursor.execute("""
+    INSERT OR IGNORE INTO users (user_id, first_name, last_name, username) 
+    VALUES (?, ?, ?, ?)
+    """, (user_id, first_name, last_name, username))
     conn.commit()
     conn.close()
 
-# Функція для отримання рандомного фото з Pixabay
-async def get_random_image():
-    url = f"https://pixabay.com/api/?key={PIXABAY_API_KEY}&q=cute&image_type=photo&per_page=50"
-    response = requests.get(url).json()
-    if "hits" in response and response["hits"]:
-        return random.choice(response["hits"])["webformatURL"]
-    return None
-
-# Функція для отримання приємного повідомлення
-def get_random_message():
-    messages = [
-        "Нехай твій день буде чудовим! 😊",
-        "Ти неймовірний! 🌟",
-        "Не забувай усміхатися! 😃",
-        "Світ прекрасний, і ти також! 💖",
-    ]
-    return random.choice(messages)
-
-# Функція для створення клавіатури з реакціями
-def get_reaction_keyboard():
-    keyboard = InlineKeyboardMarkup(row_width=2)
-    keyboard.add(
-        InlineKeyboardButton("❤️ Подобається", callback_data="like"),
-        InlineKeyboardButton("🔄 Поділитися", callback_data="share"),
-        InlineKeyboardButton("➡️ Наступне фото", callback_data="next_photo")
-    )
-    return keyboard
-
-# Функція для розсилки фото та приємних повідомлень
-async def send_photos():
+# Функція для отримання всіх користувачів
+def get_all_users():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("SELECT user_id FROM users")
     users = cursor.fetchall()
     conn.close()
-    
-    for user in users:
-        image_url = await get_random_image()
-        text = get_random_message()
-        if image_url:
-            await bot.send_photo(user[0], image_url, caption=text, reply_markup=get_reaction_keyboard())
-            await asyncio.sleep(0.5)
+    return [user[0] for user in users]
 
-# Обробка команди /start
-@dp.message(Command("start"))
+# Функція для отримання фото з Pixabay
+def get_random_photo():
+    url = "https://pixabay.com/api/"
+    api_key = PIXABAY_API_KEY
+    params = {
+        "key": api_key,
+        "q": "cute",
+        "image_type": "photo",
+        "per_page": 3,
+        "safesearch": "true"
+    }
+    response = requests.get(url, params=params).json()
+    if response["hits"]:
+        return random.choice(response["hits"])["webformatURL"]
+    return None
+
+# Розсилка фото з приємними повідомленнями
+async def send_photos():
+    users = get_all_users()
+    photo_url = get_random_photo()
+    if photo_url:
+        message = "Here's a random cute photo for you! 😊"
+        for user_id in users:
+            try:
+                await bot.send_photo(user_id, photo_url, caption=message)
+            except Exception as e:
+                logging.error(f"Error sending photo to {user_id}: {e}")
+
+# Налаштовуємо планувальник
+scheduler = AsyncIOScheduler()
+scheduler.add_job(send_photos, IntervalTrigger(hours=6))
+scheduler.start()
+
+# Обробник команди /start
+@dp.message_handler(commands=["start"])
 async def start_handler(message: types.Message):
-    await add_user(message.from_user.id, message.from_user.first_name, message.from_user.username)
-    await message.answer("Привіт! Я буду надсилати тобі приємні фото та повідомлення! 😊")
+    user = message.from_user
+    await add_user(user.id, user.first_name, user.last_name, user.username)
+    await message.reply("Hello! Welcome to the bot. 😊")
 
-# Обробка натискання кнопок реакцій
-@dp.callback_query(lambda c: c.data in ["like", "share", "next_photo"])
-async def process_callback(callback_query: CallbackQuery):
-    if callback_query.data == "like":
-        await bot.answer_callback_query(callback_query.id, text="❤️ Дякую за реакцію!")
-    elif callback_query.data == "share":
-        await bot.answer_callback_query(callback_query.id, text="🔄 Поділись цим з друзями!")
-    elif callback_query.data == "next_photo":
-        # Надсилаємо нове фото
-        new_image_url = await get_random_image()
-        if new_image_url:
-            await bot.send_photo(callback_query.from_user.id, new_image_url, caption=get_random_message(), reply_markup=get_reaction_keyboard())
-        await bot.answer_callback_query(callback_query.id)
+# Обробник команди sendnow
+@dp.message_handler(commands=["sendnow"])
+async def send_now_handler(message: types.Message):
+    users = get_all_users()
+    photo_url = get_random_photo()
+    if photo_url:
+        message_text = "Here’s a random cute photo right now! Enjoy! 😊"
+        for user_id in users:
+            try:
+                await bot.send_photo(user_id, photo_url, caption=message_text)
+            except Exception as e:
+                logging.error(f"Error sending photo to {user_id}: {e}")
+        await message.reply("I’ve sent photos to everyone!")
+
+# Обробник кнопки "Next Photo"
+@dp.callback_query_handler(lambda c: c.data == 'next_photo')
+async def process_next_photo(callback_query: types.CallbackQuery):
+    user_id = callback_query.from_user.id
+    photo_url = get_random_photo()
+    if photo_url:
+        await bot.send_photo(user_id, photo_url, caption="Here’s the next photo! 😊")
+        await callback_query.answer()
+
+# Обробник для генерації наступного фото
+@dp.message_handler(commands=["nextphoto"])
+async def next_photo_handler(message: types.Message):
+    photo_url = get_random_photo()
+    if photo_url:
+        keyboard = InlineKeyboardMarkup().add(
+            InlineKeyboardButton("Next Photo", callback_data="next_photo")
+        )
+        await message.reply("Here’s a photo for you! 😊", reply_markup=keyboard)
+        await bot.send_photo(message.chat.id, photo_url)
 
 # Запуск бота
-async def main():
-    init_db()
-    scheduler.add_job(send_photos, "interval", hours=6)  # Розсилка кожні 6 годин
-    scheduler.start()
-    await dp.start_polling(bot)
-
 if __name__ == "__main__":
-    asyncio.run(main())
+    from aiogram import executor
+    executor.start_polling(dp, skip_updates=True)
