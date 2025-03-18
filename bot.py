@@ -1,6 +1,3 @@
-import logging
-import os
-import asyncio
 from aiogram import Bot, Dispatcher, types
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram import exceptions
@@ -9,6 +6,9 @@ import requests
 import sqlite3
 from dotenv import load_dotenv
 import random
+import os
+import logging
+import asyncio
 from aiogram.filters import Command  # Використовуємо Command для обробки команд
 
 # Завантаження .env файлу
@@ -63,9 +63,9 @@ async def start_handler(message: types.Message):
         conn.commit()
 
     # Відповідь користувачу з кнопкою
-    keyboard = InlineKeyboardMarkup(row_width=1).add(
-        InlineKeyboardButton("Отримати випадкове фото", callback_data="get_image")
-    )
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton("Отримати випадкове фото", callback_data="get_image")]
+    ])
     await message.answer("Привіт! Це твій бот. Натисни кнопку, щоб отримати випадкове фото.", reply_markup=keyboard)
 
 # Обробник callback-запитів для кнопки
