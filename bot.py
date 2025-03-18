@@ -19,7 +19,7 @@ PIXABAY_API_KEY = os.getenv("PIXABAY_API_KEY")
 
 # Ініціалізація об'єктів Bot і Dispatcher
 bot = Bot(token=BOT_TOKEN)
-dp = Dispatcher()  # Dispatcher без передачі bot безпосередньо
+dp = Dispatcher(bot)  # Передаємо bot в Dispatcher безпосередньо
 
 # Налаштовуємо логування
 logging.basicConfig(level=logging.INFO)
@@ -83,6 +83,7 @@ async def send_random_photo_with_phrase(message: types.Message):
         await message.answer("Не вдалося знайти фото. Спробуй ще раз пізніше.")
 
 # Команда старт
+@dp.message_handler(commands=["start"])
 async def start_handler(message: types.Message):
     user_id = message.from_user.id
     first_name = message.from_user.first_name
@@ -92,10 +93,12 @@ async def start_handler(message: types.Message):
     await message.answer(f"Привіт, {first_name}! Я бот, готовий надсилати тобі рандомні фото.")
 
 # Команда для надсилання фото
+@dp.message_handler(commands=["sendphoto"])
 async def send_photo_handler(message: types.Message):
     await send_random_photo_with_phrase(message)
 
 # Команда для надсилання фото негайно
+@dp.message_handler(commands=["sendnow"])
 async def send_now_handler(message: types.Message):
     await send_random_photo_with_phrase(message)
 
@@ -136,11 +139,6 @@ async def on_start():
     # Запуск планувальника в циклі подій
     scheduler.start()
     await dp.start_polling()
-
-# Регістрація команд
-dp.message(commands=["start"])(start_handler)  # Оновлений метод реєстрації
-dp.message(commands=["sendphoto"])(send_photo_handler)
-dp.message(commands=["sendnow"])(send_now_handler)
 
 # Запуск бота
 if __name__ == "__main__":
