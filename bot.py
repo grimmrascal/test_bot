@@ -1,142 +1,140 @@
 import logging
-import os
 import random
 import sqlite3
-from aiogram import Bot, Dispatcher, types
-from aiogram.types import ParseMode, InlineKeyboardButton, InlineKeyboardMarkup
-from aiogram.utils import executor
-from dotenv import load_dotenv
 import requests
+from aiogram import Bot, Dispatcher, types, ParseMode
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.utils import executor
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-import asyncio
+from apscheduler.triggers.interval import IntervalTrigger
+from aiogram.contrib.middlewares.logging import LoggingMiddleware
+from aiogram.types import CallbackQuery
+from aiogram.utils.emoji import emojize
+from aiohttp import ClientSession
+import os
+from dotenv import load_dotenv
 
-# Завантаження змінних з .env файлу
+# Завантажуємо змінні середовища з .env файлу
 load_dotenv()
 
-# Отримуємо значення змінних середовища
-BOT_TOKEN = os.getenv("BOT_TOKEN")
-PIXABAY_API_KEY = os.getenv("PIXABAY_API_KEY")
-
-# Ініціалізація об'єктів Bot і Dispatcher
-bot = Bot(token=BOT_TOKEN)
-dp = Dispatcher.from_entry(bot)  # Використовуємо from_entry() для ініціалізації Dispatcher
-
-# Налаштовуємо логування
+# Налаштування логування
 logging.basicConfig(level=logging.INFO)
 
-# Підключення до SQLite бази даних
-def init_db():
-    conn = sqlite3.connect('user.db')
-    cursor = conn.cursor()
-    cursor.execute('''CREATE TABLE IF NOT EXISTS users (
-                        user_id INTEGER PRIMARY KEY,
-                        username TEXT,
-                        full_name TEXT
-                    )''')
-    conn.commit()
-    conn.close()
+# Зчитуємо токен бота та API ключ для Pixabay з .env
+BOT_TOKEN = os.getenv('BOT_TOKEN')
+PIXABAY_API_KEY = os.getenv('PIXABAY_API_KEY')
 
-# Додаємо користувача в базу даних
-def add_user_to_db(user_id, username, full_name):
-    conn = sqlite3.connect('user.db')
-    cursor = conn.cursor()
-    cursor.execute('INSERT OR IGNORE INTO users (user_id, username, full_name) VALUES (?, ?, ?)', 
-                   (user_id, username, full_name))
-    conn.commit()
-    conn.close()
+# Ініціалізація бота і диспетчера
+bot = Bot(token=BOT_TOKEN)
+dp = Dispatcher(bot)
 
-# Отримуємо випадкове фото з Pixabay API
-def get_random_photo():
-    url = f"https://pixabay.com/api/?key={PIXABAY_API_KEY}&q=nature&image_type=photo&per_page=10"
+# Підключення до SQLite
+conn = sqlite3.connect('user.db')
+cursor = conn.cursor()
+
+# Створення таблиці, якщо її ще немає
+cursor.execute('''CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, username TEXT, first_name TEXT)''')
+
+# Ініціалізація планувальника
+scheduler = AsyncIOScheduler()
+
+# Функція для відправки рандомних фото
+def get_random_image():
+    # Використовуємо Pixabay API для отримання рандомного фото
+    url = f"https://pixabay.com/api/?key={PIXABAY_API_KEY}&q=nature&image_type=photo"
     response = requests.get(url)
     data = response.json()
-    hits = data.get('hits', [])
-    if hits:
-        return random.choice(hits)['webformatURL']
-    return None
+    random_image = random.choice(data['hits'])['webformatURL']
+    return random_image
 
-# Кнопки
-def get_inline_buttons():
-    keyboard = InlineKeyboardMarkup(row_width=2)
-    like_button = InlineKeyboardButton("👍 Like", callback_data="like")
-    wow_button = InlineKeyboardButton("😲 Wow", callback_data="wow")
-    keyboard.add(like_button, wow_button)
-    return keyboard
+# Функція для збереження користувачів у базі даних
+def save_user(user_id, username, first_name):
+    cursor.execute("INSERT OR IGNORE INTO users (id, username, first_name) VALUES (?, ?, ?)",
+                   (user_id, username, first_name))
+    conn.commit()
+
+# Функція для надсилання фотографії
+async def send_photo(message, photo_url):
+    await message.answer_photo(photo_url)
 
 # Обробник команди /start
 @dp.message_handler(commands=["start"])
 async def start_handler(message: types.Message):
     user_id = message.from_user.id
     username = message.from_user.username
-    full_name = message.from_user.full_name
+    first_name = message.from_user.first_name
 
-    # Додаємо користувача в базу даних
-    add_user_to_db(user_id, username, full_name)
+    # Збереження користувача у базі даних
+    save_user(user_id, username, first_name)
 
-    # Отримуємо випадкове фото
-    photo_url = get_random_photo()
+    # Вітальне повідомлення
+    welcome_message = f"Привіт, {first_name}! Я твій помічник. Щоб отримати фото, натисни кнопку нижче."
+    
+    keyboard = InlineKeyboardMarkup().add(InlineKeyboardButton("Отримати фото", callback_data="get_photo"))
+    await message.answer(welcome_message, reply_markup=keyboard)
 
-    # Відправляємо повідомлення з кнопками
-    if photo_url:
-        await message.answer_photo(photo_url, caption="Ось твоє випадкове фото!", reply_markup=get_inline_buttons())
-    else:
-        await message.answer("Не вдалося отримати фото.")
+# Обробник натискання кнопки
+@dp.callback_query_handler(lambda c: c.data == 'get_photo')
+async def process_callback_photo(callback_query: CallbackQuery):
+    photo_url = get_random_image()  # Отримуємо URL рандомного фото
+    await send_photo(callback_query.message, photo_url)  # Надсилаємо фото
+    await callback_query.answer()
 
-# Обробник callback query (реакції на кнопки)
-@dp.callback_query_handler(lambda c: c.data in ["like", "wow"])
-async def handle_reaction(callback_query: types.CallbackQuery):
-    reaction = callback_query.data
-    user_id = callback_query.from_user.id
-    # Записуємо реакцію користувача в базу даних чи інше місце для подальшого використання
-
-    # Відправляємо повідомлення користувачу
-    await bot.answer_callback_query(callback_query.id, text=f"Ти натиснув {reaction}")
-    await bot.send_message(user_id, f"Ти вибрав реакцію: {reaction}")
-
-# Команда для миттєвої розсилки
-@dp.message_handler(commands=["sendnow"])
-async def sendnow_handler(message: types.Message):
-    # Відправляємо випадкові фото всім користувачам, які є в базі
-    conn = sqlite3.connect('user.db')
-    cursor = conn.cursor()
-    cursor.execute('SELECT user_id FROM users')
+# Функція для розсилки фото через задані інтервали
+def send_scheduled_photos():
+    cursor.execute("SELECT id FROM users")
     users = cursor.fetchall()
-    conn.close()
-
+    
     for user in users:
         user_id = user[0]
-        photo_url = get_random_photo()
-        if photo_url:
-            await bot.send_photo(user_id, photo_url, caption="Це твоє нове фото!")
-        else:
-            await bot.send_message(user_id, "Не вдалося отримати фото.")
+        photo_url = get_random_image()  # Отримуємо URL рандомного фото
+        try:
+            bot.send_photo(user_id, photo_url)
+        except Exception as e:
+            logging.error(f"Error sending photo to {user_id}: {e}")
 
-# Планування відправки фото кожні 30 хвилин
-async def scheduled_send_photos():
-    scheduler = AsyncIOScheduler()
-    scheduler.add_job(send_photos, 'interval', minutes=30)
-    scheduler.start()
+# Планувальник для відправки фото
+scheduler.add_job(
+    send_scheduled_photos,
+    IntervalTrigger(hours=1),  # Викликається кожну годину
+    id='send_photos_job',
+    name='Send photos to users every hour',
+    replace_existing=True
+)
 
-async def send_photos():
-    conn = sqlite3.connect('user.db')
-    cursor = conn.cursor()
-    cursor.execute('SELECT user_id FROM users')
+# Функція для відправки повідомлень
+async def send_random_messages():
+    cursor.execute("SELECT id FROM users")
     users = cursor.fetchall()
-    conn.close()
-
+    
+    messages = [
+        "Твій день буде чудовим!",
+        "Не забувай посміхатись!",
+        "Ти можеш все, якщо хочеш!",
+        "Час для нових досягнень!"
+    ]
+    
     for user in users:
         user_id = user[0]
-        photo_url = get_random_photo()
-        if photo_url:
-            await bot.send_photo(user_id, photo_url, caption="Це твоє випадкове фото!")
-        else:
-            await bot.send_message(user_id, "Не вдалося отримати фото.")
+        message = random.choice(messages)
+        try:
+            await bot.send_message(user_id, message)
+        except Exception as e:
+            logging.error(f"Error sending message to {user_id}: {e}")
+
+# Планувальник для відправки повідомлень
+scheduler.add_job(
+    send_random_messages,
+    IntervalTrigger(hours=3),  # Викликається кожні 3 години
+    id='send_messages_job',
+    name='Send random messages to users every 3 hours',
+    replace_existing=True
+)
 
 # Запуск планувальника
-async def on_start():
-    init_db()
-    await scheduled_send_photos()
-    await dp.start_polling()
+scheduler.start()
 
+# Запуск бота
 if __name__ == "__main__":
-    asyncio.run(on_start())
+    from aiogram import executor
+    executor.start_polling(dp, skip_updates=True)
