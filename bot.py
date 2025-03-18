@@ -5,8 +5,6 @@ import sqlite3
 import requests
 from aiogram import Bot, Dispatcher, types
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-from aiogram.contrib.middlewares.logging import LoggingMiddleware
-from aiogram.utils import executor
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 from dotenv import load_dotenv
@@ -20,7 +18,6 @@ PIXABAY_API_KEY = os.getenv("PIXABAY_API_KEY")
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher(bot)
-dp.middleware.setup(LoggingMiddleware())
 
 # Налаштовуємо логування
 logging.basicConfig(level=logging.INFO)
