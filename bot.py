@@ -3,7 +3,7 @@ import os
 import asyncio
 from aiogram import Bot, Dispatcher, types
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
-from aiogram.utils import exceptions
+from aiogram import exceptions  # Виправлений імпорт
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 import requests
 import sqlite3
