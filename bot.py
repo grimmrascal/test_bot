@@ -3,7 +3,7 @@ import os
 import asyncio
 from aiogram import Bot, Dispatcher, types
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
-from aiogram import exceptions  # Виправлений імпорт
+from aiogram import exceptions
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 import requests
 import sqlite3
@@ -49,7 +49,7 @@ def get_random_image():
     return None
 
 # Команда /start
-@dp.message_handler(commands=["start"])
+@dp.message(commands=["start"])
 async def start_handler(message: types.Message):
     # Перевірка, чи є користувач в базі даних
     cursor.execute("SELECT * FROM users WHERE telegram_id = ?", (message.from_user.id,))
@@ -68,7 +68,7 @@ async def start_handler(message: types.Message):
     await message.answer("Привіт! Це твій бот. Натисни кнопку, щоб отримати випадкове фото.", reply_markup=keyboard)
 
 # Обробник callback-запитів для кнопки
-@dp.callback_query_handler(lambda c: c.data == "get_image")
+@dp.callback_query(lambda c: c.data == "get_image")
 async def process_callback(callback_query: types.CallbackQuery):
     image_url = get_random_image()
     if image_url:
