@@ -8,6 +8,7 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 from dotenv import load_dotenv
+import asyncio
 
 # Завантаження змінних з .env файлу
 load_dotenv()
@@ -116,8 +117,12 @@ async def scheduled_photo_send():
         except Exception as e:
             logging.error(f"Не вдалося надіслати фото користувачу {user_id}: {e}")
 
-# Запуск планувальника
-scheduler.start()
+# Запуск планувальника в асинхронному циклі
+async def on_start():
+    create_table()  # Переконатися, що таблиця є в базі даних
+    # Запуск планувальника в циклі подій
+    scheduler.start()
+    await dp.start_polling()
 
 # Регістрація команд
 dp.register_message_handler(start_handler, commands=["start"])
@@ -126,6 +131,5 @@ dp.register_message_handler(send_now_handler, commands=["sendnow"])
 
 # Запуск бота
 if __name__ == "__main__":
-    from aiogram import executor
-    create_table()  # Переконатися, що таблиця є в базі даних
-    executor.start_polling(dp)
+    # Використовуємо asyncio.run() для запуску асинхронної функції
+    asyncio.run(on_start())
