@@ -91,7 +91,7 @@ def get_all_users():
     return cursor.fetchall()
 
 # Функція для отримання випадкового зображення за темою
-def get_random_image(query="funny"):
+def get_random_image(query="funny, kids, sunset, motivation"):
     url = f"https://pixabay.com/api/?key={PIXABAY_API_KEY}&q={query}&image_type=photo&per_page=50"
     response = requests.get(url)
     if response.status_code == 200:
@@ -174,9 +174,8 @@ async def handle_reaction(callback_query: types.CallbackQuery):
         await callback_query.answer("🔄 Ось нове фото!")
         logging.info(f"Користувач {user_id} запросив нове фото.")
 
-# Планувальник для щоденних повідомлень (2 рази на день)
+# Планувальник для щоденних повідомлень (1 раз на день)
 scheduler = AsyncIOScheduler()
-scheduler.add_job(send_random_messages, CronTrigger(hour=10, minute=0, timezone=kyiv_tz))  # 10:00
 scheduler.add_job(send_random_messages, CronTrigger(hour=18, minute=0, timezone=kyiv_tz))  # 18:00
 
 # Основна функція запуску бота
