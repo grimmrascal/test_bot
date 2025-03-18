@@ -121,8 +121,8 @@ async def scheduled_photo_send():
         except Exception as e:
             logging.error(f"Не вдалося надіслати фото користувачу {user_id}: {e}")
 
-# Обробка натискання кнопок (реакції)
-@dp.callback_query_handler(lambda c: c.data in ["like", "wow"])
+# Реєстрація обробника натискання кнопок (реакцій)
+@dp.callback_query(lambda c: c.data in ["like", "wow"])
 async def process_callback(callback_query: types.CallbackQuery):
     reaction = callback_query.data
     if reaction == "like":
