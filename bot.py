@@ -36,7 +36,7 @@ kyiv_tz = timezone("Europe/Kyiv")
 ADMIN_USER_IDS = [471637263, 5142786008]  # Замініть на список реальних user_id
 
 # Підключення до бази даних
-conn = sqlite3.connect('users.db')
+conn = sqlite3.connect('users.db') 
 cursor = conn.cursor()
 
 # Створення таблиці користувачів
@@ -65,6 +65,7 @@ def add_user(user_id, username, first_name):
         VALUES (?, ?, ?)
     ''', (user_id, username, first_name))
     conn.commit()
+    logging.info(f"Користувач {user_id} доданий до бази даних.")
     # Надсилаємо адміністраторам повідомлення про додавання користувача
     for admin_id in ADMIN_USER_IDS:
         asyncio.create_task(bot.send_message(
@@ -112,7 +113,7 @@ async def start_handler(message: types.Message):
     add_user(user_id, username, first_name)
     await message.answer(f"Привіт, {first_name}! Ти додана у список розсилки.")
     logging.info(f"✅ Користувач {user_id} ({username}) доданий у список розсилки.")
-
+    
 # Обробник команди /sendnow для миттєвої розсилки
 @dp.message(Command("sendnow"))
 async def send_now_handler(message: types.Message):
