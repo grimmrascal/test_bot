@@ -114,7 +114,7 @@ def get_random_image(query="funny, kids, sunset, motivation"):
     return None
 
 # Обробник команди /start
-@dp.message(Command("start"))
+@router.message(Command("start"))
 async def start_handler(message: types.Message):
     user_id = message.from_user.id
     username = message.from_user.username
@@ -122,8 +122,9 @@ async def start_handler(message: types.Message):
 
     # Запитуємо пароль
     await message.answer("🔒 Введіть пароль для доступу до бота:")
-    
-    @dp.message_handler()
+
+    # Обробник для перевірки пароля
+    @router.message()
     async def password_handler(password_message: types.Message):
         entered_password = password_message.text
         correct_password = os.getenv("BOT_PASSWORD")  # Отримуємо пароль із .env
