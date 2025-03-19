@@ -172,7 +172,7 @@ async def broadcast_handler(message: types.Message):
                     await message.answer("❌ Неправильний формат. Використовуйте: /t <текст повідомлення> або надішліть фото.")
                     return
 
-                broadcast_message = command_parts[1]  # Текст повідомлення
+                broadcast_message = command_parts[1]  # Текст повідомлення без команди
 
                 # Розсилаємо текст кожному користувачу, крім відправника
                 for user in users:
