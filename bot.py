@@ -146,7 +146,7 @@ async def broadcast_handler(message: types.Message):
 
             # Перевіряємо, чи є фото в повідомленні
             if message.photo:
-                caption = message.caption  # Отримуємо текст підпису, якщо він є
+                caption = message.caption  # Використовуємо лише підпис до фото, якщо він є
                 photo_id = message.photo[-1].file_id  # Використовуємо останню (найкращу) версію фото
 
                 # Розсилаємо фото кожному користувачу, крім відправника
@@ -158,7 +158,7 @@ async def broadcast_handler(message: types.Message):
                         await bot.send_photo(
                             chat_id=user['user_id'],
                             photo=photo_id,
-                            caption=caption  # Додаємо підпис, якщо він є
+                            caption=caption  # Додаємо лише підпис, якщо він є
                         )
                         logging.info(f"📨 Фото надіслано користувачу {user['user_id']}")
                     except Exception as e:
