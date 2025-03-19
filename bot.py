@@ -211,6 +211,27 @@ async def remove_user_handler(message: types.Message):
     else:
         await message.answer("❌ У вас немає прав для виконання цієї команди.")
 
+@dp.callback_query_handler(lambda callback: callback.data.startswith("reaction:"))
+async def reaction_handler(callback: types.CallbackQuery):
+    if callback.data == "reaction:like":
+        await callback.answer("❤️ Дякую за твою реакцію!")
+        logging.info(f"Користувач {callback.from_user.id} натиснув ❤️")
+    elif callback.data == "reaction:new_photo":
+        await callback.answer("🔄 Завантажую нове фото...")
+        logging.info(f"Користувач {callback.from_user.id} запросив нове фото")
+
+        # Завантажуємо нове фото
+        image = get_random_image(query="motivation")
+        if image:
+            await bot.send_photo(
+                callback.from_user.id,
+                photo=image,
+                caption="Ось нове фото для вас!",
+                reply_markup=create_reaction_keyboard()
+            )
+        else:
+            await callback.message.answer("⚠️ Не вдалося отримати нове фото.")
+
 # Функція для розсилки випадкових приємних повідомлень
 async def send_random_messages():
     messages = [
