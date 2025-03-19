@@ -143,10 +143,12 @@ async def broadcast_handler(message: types.Message):
                 await message.answer("❌ Немає користувачів для розсилки.")
                 return
 
-            # Якщо є фото, відправляємо фото з підписом (якщо він є)
+            # Якщо є фото, відправляємо тільки фото без команди
             if message.photo:
                 photo_id = message.photo[-1].file_id  # Найкраща якість фото
-                caption = message.caption if message.caption else None  # Якщо є підпис, додаємо його
+                
+                # Використовуємо тільки підпис фото, якщо він є
+                caption = message.caption.strip() if message.caption else None
 
                 for user in users:
                     if user['user_id'] == message.from_user.id:
@@ -156,7 +158,7 @@ async def broadcast_handler(message: types.Message):
                         await bot.send_photo(
                             chat_id=user['user_id'],
                             photo=photo_id,
-                            caption=caption  # Надсилаємо підпис, якщо він є
+                            caption=caption  # Додаємо лише підпис, якщо він є
                         )
                         logging.info(f"📨 Фото надіслано користувачу {user['user_id']}")
                     except Exception as e:
@@ -165,7 +167,7 @@ async def broadcast_handler(message: types.Message):
                 await message.answer("✅ Фото успішно розіслано всім користувачам!")
                 return  # Завершуємо функцію, щоб не обробляти текст далі
 
-            # Якщо фото немає, розсилаємо тільки текст без команди
+            # Якщо фото немає, розсилаємо тільки текст, без команди "/t"
             command_parts = message.text.split(maxsplit=1)
 
             if len(command_parts) < 2:  # Якщо після "/t" немає тексту
@@ -191,7 +193,6 @@ async def broadcast_handler(message: types.Message):
     else:
         await message.answer("❌ У вас немає прав для виконання цієї команди.")
 
-    
 # Обробник команди /get_users для отримання списку учасників
 @dp.message(Command("get_users"))
 async def get_users_handler(message: types.Message):
