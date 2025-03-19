@@ -120,9 +120,22 @@ async def start_handler(message: types.Message):
     username = message.from_user.username
     first_name = message.from_user.first_name
 
-    add_user(user_id, username, first_name)
-    await message.answer(f"Привіт, {first_name}! Ти додана у список розсилки.")
-    logging.info(f"✅ Користувач {user_id} ({username}) доданий у список розсилки.")
+    # Запитуємо пароль
+    await message.answer("🔒 Введіть пароль для доступу до бота:")
+    
+    @dp.message_handler()
+    async def password_handler(password_message: types.Message):
+        entered_password = password_message.text
+        correct_password = os.getenv("BOT_PASSWORD")  # Отримуємо пароль із .env
+
+        if entered_password == correct_password:
+            # Додаємо користувача до бази даних
+            add_user(user_id, username, first_name)
+            await password_message.answer(f"✅ Пароль правильний! Привіт, {first_name}! Ти додана у список розсилки.")
+            logging.info(f"✅ Користувач {user_id} ({username}) доданий у список розсилки.")
+        else:
+            await password_message.answer("❌ Неправильний пароль. Доступ заборонено.")
+            logging.warning(f"❌ Невдала спроба доступу користувача {user_id} ({username}).")
 
 # Обробник команди /sendnow для миттєвої розсилки
 @dp.message(Command("sendnow"))
