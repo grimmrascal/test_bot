@@ -8,6 +8,7 @@ from psycopg2.extras import RealDictCursor
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram import Router
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from pytz import timezone
@@ -28,6 +29,10 @@ if not DATABASE_URL:
 
 # Налаштування логування
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+
+# Ініціалізація Router
+router = Router()
+dp.include_router(router)
 
 # Ініціалізація бота і диспетчера
 bot = Bot(token=TOKEN)
@@ -270,7 +275,7 @@ async def remove_user_handler(message: types.Message):
     else:
         await message.answer("❌ У вас немає прав для виконання цієї команди.")
 
-@dp.callback_query_handler(lambda callback: callback.data.startswith("reaction:"))
+@router.callback_query(lambda callback: callback.data.startswith("reaction:"))
 async def reaction_handler(callback: types.CallbackQuery):
     if callback.data == "reaction:like":
         await callback.answer("❤️ Дякую за твою реакцію!")
