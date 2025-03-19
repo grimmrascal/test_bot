@@ -143,10 +143,10 @@ async def broadcast_handler(message: types.Message):
                 await message.answer("❌ Немає користувачів для розсилки.")
                 return
 
-            # Якщо повідомлення містить фото
+            # Якщо є фото — надсилаємо тільки фото без команди
             if message.photo:
                 photo_id = message.photo[-1].file_id  # Найкраща якість фото
-                caption = message.caption  # Отримуємо підпис (None, якщо немає)
+                caption = message.caption if message.caption else ""  # Додаємо підпис, якщо він є
 
                 for user in users:
                     if user['user_id'] == message.from_user.id:
@@ -156,7 +156,7 @@ async def broadcast_handler(message: types.Message):
                         await bot.send_photo(
                             chat_id=user['user_id'],
                             photo=photo_id,
-                            caption=caption  # Додаємо лише підпис, якщо є
+                            caption=caption  # Надсилаємо підпис, якщо є
                         )
                         logging.info(f"📨 Фото надіслано користувачу {user['user_id']}")
                     except Exception as e:
@@ -165,20 +165,19 @@ async def broadcast_handler(message: types.Message):
                 await message.answer("✅ Фото успішно розіслано всім користувачам!")
                 return  # Завершуємо функцію, щоб не обробляти текст далі
 
-            # Якщо фото немає, розсилаємо лише текст (без команди "/t")
-            command_parts = message.text.split(maxsplit=1)
-            if len(command_parts) < 2:
-                await message.answer("❌ Неправильний формат. Надішліть фото або використовуйте: /t <текст повідомлення>.")
-                return
+            # Якщо фото немає, але є текст — ігноруємо команду /t та надсилаємо лише текст
+            text = message.text.removeprefix("/t").strip()
 
-            broadcast_message = command_parts[1]  # Беремо текст без команди
+            if not text:  # Якщо після команди нічого не залишилось
+                await message.answer("❌ Неправильний формат. Надішліть фото або текст після команди.")
+                return
 
             for user in users:
                 if user['user_id'] == message.from_user.id:
                     continue  # Пропускаємо відправника
 
                 try:
-                    await bot.send_message(user['user_id'], broadcast_message)
+                    await bot.send_message(user['user_id'], text)
                     logging.info(f"📨 Повідомлення надіслано користувачу {user['user_id']}")
                 except Exception as e:
                     logging.warning(f"⚠️ Не вдалося надіслати повідомлення користувачу {user['user_id']}: {e}")
@@ -189,9 +188,7 @@ async def broadcast_handler(message: types.Message):
             await message.answer(f"❌ Помилка при розсилці: {e}")
     else:
         await message.answer("❌ У вас немає прав для виконання цієї команди.")
-
-
-        
+    
 # Обробник команди /get_users для отримання списку учасників
 @dp.message(Command("get_users"))
 async def get_users_handler(message: types.Message):
