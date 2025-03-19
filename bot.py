@@ -148,8 +148,8 @@ async def broadcast_handler(message: types.Message):
 
         # **Обробка фото**  
         if message.photo:
-            photo_id = message.photo[-1].file_id  # Найкраща якість фото
-            caption = message.caption if message.caption else None  # Тільки якщо є підпис
+            photo_id = message.photo[-1].file_id  # Отримуємо фото у найкращій якості
+            caption = message.caption if message.caption else None  # Додаємо підпис, якщо є
 
             for user in users:
                 if user['user_id'] == message.from_user.id:
@@ -162,10 +162,10 @@ async def broadcast_handler(message: types.Message):
                     logging.warning(f"⚠️ Не вдалося надіслати фото користувачу {user['user_id']}: {e}")
 
             await message.answer("✅ Фото успішно розіслано всім користувачам!")
-            return  # ВИХІД – не читаємо текст далі!
+            return  # ВАЖЛИВО! ВИХОДИМО З ФУНКЦІЇ, ЩОБ НЕ ОБРОБЛЯТИ ТЕКСТ
 
-        # **Обробка тексту**  
-        text_content = message.text.replace("/t", "", 1).strip()  # Видаляємо "/t" і зайві пробіли
+        # **Обробка тексту (якщо фото немає)**  
+        text_content = message.text[len("/t"):].strip()  # Видаляємо "/t" і зайві пробіли
 
         if not text_content:
             await message.answer("❌ Ви не написали текст для розсилки!")
