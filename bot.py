@@ -159,6 +159,34 @@ async def add_user_handler(message: types.Message):
     else:
         await message.answer("❌ У вас немає прав для виконання цієї команди.")
 
+# Обробник команди /remove_user для ручного видалення користувача
+@dp.message(Command("remove_user"))
+async def remove_user_handler(message: types.Message):
+    if message.from_user.id in ADMIN_USER_IDS:  # Перевіряємо, чи це адміністратор
+        try:
+            # Розділяємо текст команди на параметри
+            command_parts = message.text.split(maxsplit=1)
+            if len(command_parts) < 2:
+                await message.answer("❌ Неправильний формат. Використовуйте: /remove_user <user_id>")
+                return
+
+            user_id = int(command_parts[1])  # Отримуємо user_id для видалення
+
+            # Видаляємо користувача з бази даних
+            cursor.execute('SELECT username, first_name FROM users WHERE user_id = ?', (user_id,))
+            user = cursor.fetchone()
+            if user:
+                remove_user(user_id)  # Викликаємо функцію видалення
+                await message.answer(f"✅ Користувач із ID {user_id} успішно видалений.")
+            else:
+                await message.answer(f"❌ Користувача з ID {user_id} не знайдено.")
+        except ValueError:
+            await message.answer("❌ Неправильний формат. user_id має бути числом.")
+        except Exception as e:
+            await message.answer(f"❌ Помилка при видаленні користувача: {e}")
+    else:
+        await message.answer("❌ У вас немає прав для виконання цієї команди.")
+
 # Функція для розсилки випадкових приємних повідомлень
 async def send_random_messages():
     messages = [
