@@ -146,7 +146,8 @@ async def broadcast_handler(message: types.Message):
 
             # Перевіряємо, чи є фото в повідомленні
             if message.photo:
-                caption = message.caption  # Використовуємо лише підпис до фото, якщо він є
+                # Використовуємо лише підпис до фото, якщо він є
+                caption = message.caption if message.caption else None
                 photo_id = message.photo[-1].file_id  # Використовуємо останню (найкращу) версію фото
 
                 # Розсилаємо фото кожному користувачу, крім відправника
@@ -190,7 +191,7 @@ async def broadcast_handler(message: types.Message):
             await message.answer(f"❌ Помилка при розсилці: {e}")
     else:
         await message.answer("❌ У вас немає прав для виконання цієї команди.")
-
+        
 # Обробник команди /get_users для отримання списку учасників
 @dp.message(Command("get_users"))
 async def get_users_handler(message: types.Message):
