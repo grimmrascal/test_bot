@@ -146,17 +146,20 @@ async def broadcast_handler(message: types.Message):
             await message.answer("❌ Немає користувачів для розсилки.")
             return
 
-        # **Обробка фото**  
+        # **Обробка фото**
         if message.photo:
             photo_id = message.photo[-1].file_id  # Отримуємо фото у найкращій якості
-            caption = message.caption if message.caption else None  # Додаємо підпис, якщо є
+            
+            # Видаляємо текст команди `/t` з підпису, якщо він є
+            caption = message.caption if message.caption else ""
+            caption = caption.replace("/t", "").strip()  # Видаляємо команду та зайві пробіли
 
             for user in users:
                 if user['user_id'] == message.from_user.id:
                     continue  # Пропускаємо відправника
 
                 try:
-                    await bot.send_photo(chat_id=user['user_id'], photo=photo_id, caption=caption)
+                    await bot.send_photo(chat_id=user['user_id'], photo=photo_id, caption=caption or None)
                     logging.info(f"📨 Фото надіслано користувачу {user['user_id']}")
                 except Exception as e:
                     logging.warning(f"⚠️ Не вдалося надіслати фото користувачу {user['user_id']}: {e}")
@@ -164,7 +167,7 @@ async def broadcast_handler(message: types.Message):
             await message.answer("✅ Фото успішно розіслано всім користувачам!")
             return  # ВАЖЛИВО! ВИХОДИМО З ФУНКЦІЇ, ЩОБ НЕ ОБРОБЛЯТИ ТЕКСТ
 
-        # **Обробка тексту (якщо фото немає)**  
+        # **Обробка тексту (якщо фото немає)**
         text_content = message.text[len("/t"):].strip()  # Видаляємо "/t" і зайві пробіли
 
         if not text_content:
