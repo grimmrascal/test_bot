@@ -30,13 +30,13 @@ if not DATABASE_URL:
 # Налаштування логування
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
-# Ініціалізація Router
-router = Router()
-dp.include_router(router)
-
 # Ініціалізація бота і диспетчера
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
+
+# Ініціалізація Router
+router = Router()
+dp.include_router(router)
 
 # Часовий пояс Києва
 kyiv_tz = timezone("Europe/Kyiv")
