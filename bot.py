@@ -115,7 +115,7 @@ def get_random_image(query="funny, kids, sunset, motivation"):
 
 # Обробник команди /start
 @router.message(Command("start"))
-async def start_handler(message: types.Message):
+async def start_handler(message: Message):
     user_id = message.from_user.id
     username = message.from_user.username
     first_name = message.from_user.first_name
@@ -123,17 +123,31 @@ async def start_handler(message: types.Message):
     # Запитуємо пароль
     await message.answer("🔒 Введіть пароль для доступу до бота:")
 
-    # Обробник для перевірки пароля
     @router.message()
-    async def password_handler(password_message: types.Message):
+    async def password_handler(password_message: Message):
         entered_password = password_message.text
         correct_password = os.getenv("BOT_PASSWORD")  # Отримуємо пароль із .env
 
         if entered_password == correct_password:
-            # Додаємо користувача до бази даних
+            # Додаємо користувача до бази
             add_user(user_id, username, first_name)
+
             await password_message.answer(f"✅ Пароль правильний! Привіт, {first_name}! Ти додана у список розсилки.")
             logging.info(f"✅ Користувач {user_id} ({username}) доданий у список розсилки.")
+
+            # 🔹 Оповіщення адмінів про нового користувача
+            new_user_text = (
+                f"🆕 Новий користувач!\n"
+                f"👤 Ім'я: {first_name}\n"
+                f"🆔 ID: {user_id}\n"
+                f"🔗 @{username if username else 'немає'}"
+            )
+            for admin_id in ADMIN_USER_IDS:
+                try:
+                    await password_message.bot.send_message(admin_id, new_user_text)
+                except Exception as e:
+                    logging.warning(f"⚠️ Не вдалося повідомити адміна {admin_id}: {e}")
+
         else:
             await password_message.answer("❌ Неправильний пароль. Доступ заборонено.")
             logging.warning(f"❌ Невдала спроба доступу користувача {user_id} ({username}).")
