@@ -115,7 +115,7 @@ def get_random_image(query="funny, kids, sunset, motivation"):
 
 # Обробник команди /start
 @router.message(Command("start"))
-async def start_handler(message: Message):
+async def start_handler(message: types.Message):
     user_id = message.from_user.id
     username = message.from_user.username
     first_name = message.from_user.first_name
