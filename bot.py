@@ -7,6 +7,7 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
+from aiogram.types import Message
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram import Router
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -115,27 +116,24 @@ def get_random_image(query="funny, kids, sunset, motivation"):
 
 # Обробник команди /start
 @router.message(Command("start"))
-async def start_handler(message: types.Message):
+async def start_handler(message: Message):  # Використовуємо правильний імпортований клас
     user_id = message.from_user.id
     username = message.from_user.username
     first_name = message.from_user.first_name
 
-    # Запитуємо пароль
     await message.answer("🔒 Введіть пароль для доступу до бота:")
 
-    @router.message()
+    @router.message()  # Вкладений хендлер — це погана практика, потрібно винести окремо
     async def password_handler(password_message: Message):
         entered_password = password_message.text
-        correct_password = os.getenv("BOT_PASSWORD")  # Отримуємо пароль із .env
+        correct_password = os.getenv("BOT_PASSWORD")  
 
         if entered_password == correct_password:
-            # Додаємо користувача до бази
             add_user(user_id, username, first_name)
 
             await password_message.answer(f"✅ Пароль правильний! Привіт, {first_name}! Ти додана у список розсилки.")
             logging.info(f"✅ Користувач {user_id} ({username}) доданий у список розсилки.")
 
-            # 🔹 Оповіщення адмінів про нового користувача
             new_user_text = (
                 f"🆕 Новий користувач!\n"
                 f"👤 Ім'я: {first_name}\n"
