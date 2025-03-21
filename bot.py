@@ -310,7 +310,7 @@ async def reaction_handler(callback: types.CallbackQuery):
         logging.info(f"Користувач {callback.from_user.id} запросив нове фото")
 
         # Завантажуємо нове фото
-        image = get_random_image(query="funny, kids, sunset")
+        image = get_random_image(query="kids, sunset")
         if image:
             await bot.send_photo(
                 callback.from_user.id,
