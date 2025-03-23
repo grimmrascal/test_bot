@@ -61,6 +61,13 @@ cursor.execute('''
 ''')
 conn.commit()
 
+# Додавання стовпця last_active до таблиці users
+cursor.execute('''
+    ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS last_active TIMESTAMP DEFAULT NOW();
+''')
+conn.commit()
+
 # Функція для створення клавіатури з кнопками
 def create_reaction_keyboard():
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
