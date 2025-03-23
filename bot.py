@@ -232,6 +232,12 @@ async def send_now_handler(message: types.Message):
     else:
         await message.answer("❌ У вас немає прав для виконання цієї команди.")
 
+# Універсальний обробник для необроблених повідомлень
+@router.message()
+async def handle_unhandled_messages(message: types.Message):
+    logging.info(f"Необроблене повідомлення: {message.text}")
+    await message.answer("❌ Вибачте, я не розумію цю команду.")
+
 # Обробник введення тексту або фото для розсилки
 @dp.message(BroadcastState.waiting_for_message)
 async def process_broadcast_message(message: types.Message, state: FSMContext):
