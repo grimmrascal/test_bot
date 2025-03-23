@@ -98,8 +98,8 @@ def create_reaction_keyboard():
 def create_main_keyboard():
     keyboard = ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="/start"), KeyboardButton(text="/sendnow")],
-            [KeyboardButton(text="/t")]
+            [KeyboardButton(text="🔄 Перезапустити"), KeyboardButton(text="📤 Розсилка")],
+            [KeyboardButton(text="✉️ Надіслати повідомлення")]
         ],
         resize_keyboard=True,
         one_time_keyboard=False
@@ -109,9 +109,9 @@ def create_main_keyboard():
 def create_admin_keyboard():
     keyboard = ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="/stats"), KeyboardButton(text="/get_users")],
-            [KeyboardButton(text="/add_user"), KeyboardButton(text="/remove_user")],
-            [KeyboardButton(text="/sendnow"), KeyboardButton(text="/t")]
+            [KeyboardButton(text="📊 Статистика"), KeyboardButton(text="👥 Список користувачів")],
+            [KeyboardButton(text="➕ Додати користувача"), KeyboardButton(text="➖ Видалити користувача")],
+            [KeyboardButton(text="📤 Розсилка"), KeyboardButton(text="✉️ Надіслати повідомлення")]
         ],
         resize_keyboard=True,
         one_time_keyboard=False
