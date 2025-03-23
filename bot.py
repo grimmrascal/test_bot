@@ -81,23 +81,29 @@ def create_reaction_keyboard():
 
 # Функція для створення постійної клавіатури з командами
 def create_main_keyboard():
-    keyboard = ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=False)
-    keyboard.add(
-        KeyboardButton("/start"),
-        KeyboardButton("/sendnow"),
-        KeyboardButton("/t")
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton("/start")],
+            [KeyboardButton("/sendnow")],
+            [KeyboardButton("/t")]
+        ],
+        resize_keyboard=True,
+        one_time_keyboard=False
     )
     return keyboard
 
 def create_admin_keyboard():
-    keyboard = ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=False)
-    keyboard.add(
-        KeyboardButton("/stats"),
-        KeyboardButton("/get_users"),
-        KeyboardButton("/add_user"),
-        KeyboardButton("/remove_user"),
-        KeyboardButton("/sendnow"),
-        KeyboardButton("/t")
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton("/stats")],
+            [KeyboardButton("/get_users")],
+            [KeyboardButton("/add_user")],
+            [KeyboardButton("/remove_user")],
+            [KeyboardButton("/sendnow")],
+            [KeyboardButton("/t")]
+        ],
+        resize_keyboard=True,
+        one_time_keyboard=False
     )
     return keyboard
 
