@@ -100,7 +100,7 @@ def create_main_keyboard():
     keyboard = ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text="🔄 Перезапустити"), KeyboardButton(text="📤 Розсилка")],
-            [KeyboardButton(text="✉️ Надіслати повідомлення")]
+            [KeyboardButton(text="✉️ Своє повідомлення")]
         ],
         resize_keyboard=True,
         one_time_keyboard=False
@@ -113,7 +113,7 @@ def create_admin_keyboard():
         keyboard=[
             [KeyboardButton(text="📊 Статистика"), KeyboardButton(text="👥 Список користувачів")],
             [KeyboardButton(text="➕ Додати користувача"), KeyboardButton(text="➖ Видалити користувача")],
-            [KeyboardButton(text="📤 Розсилка"), KeyboardButton(text="✉️ Надіслати повідомлення")]
+            [KeyboardButton(text="📤 Розсилка"), KeyboardButton(text="✉️ Своє повідомлення")]
         ],
         resize_keyboard=True,
         one_time_keyboard=False
@@ -187,7 +187,7 @@ async def restart_handler(message: types.Message):
 async def sendnow_handler_button(message: types.Message):
     await send_now_handler(message)
 
-@dp.message(lambda message: message.text == "✉️ Надіслати повідомлення")
+@dp.message(lambda message: message.text == "✉️ Своє повідомлення")
 async def t_handler_button(message: types.Message, state: FSMContext):
     await t_handler(message, state)
 
