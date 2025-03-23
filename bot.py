@@ -83,8 +83,7 @@ def create_reaction_keyboard():
 def create_main_keyboard():
     keyboard = ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="/start")],
-            [KeyboardButton(text="/sendnow")],
+            [KeyboardButton(text="/start"), KeyboardButton(text="/sendnow")],
             [KeyboardButton(text="/t")]
         ],
         resize_keyboard=True,
@@ -95,12 +94,9 @@ def create_main_keyboard():
 def create_admin_keyboard():
     keyboard = ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="/stats")],
-            [KeyboardButton(text="/get_users")],
-            [KeyboardButton(text="/add_user")],
-            [KeyboardButton(text="/remove_user")],
-            [KeyboardButton(text="/sendnow")],
-            [KeyboardButton(text="/t")]
+            [KeyboardButton(text="/stats"), KeyboardButton(text="/get_users")],
+            [KeyboardButton(text="/add_user"), KeyboardButton(text="/remove_user")],
+            [KeyboardButton(text="/sendnow"), KeyboardButton(text="/t")]
         ],
         resize_keyboard=True,
         one_time_keyboard=False
