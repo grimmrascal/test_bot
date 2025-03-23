@@ -321,25 +321,26 @@ async def stats_handler(message: types.Message):
 
 # Обробник команди /add_user для ручного додавання користувача
 @dp.message(Command("add_user"))
-async def add_user_handler(message: types.Message):
+async def add_user_start(message: types.Message, state: FSMContext):
     if message.from_user.id in ADMIN_USER_IDS:  # Перевіряємо, чи це адміністратор
-        try:
-            # Розділяємо текст команди на частини
-            command_parts = message.text.split(maxsplit=1)
-            if len(command_parts) < 2:
-                await message.answer("❌ Неправильний формат. Використовуйте: /add_user <user_id>")
-                return
+        await message.answer("Введіть ID користувача, якого потрібно додати:")
+        await state.set_state(AddUserState.waiting_for_user_id)  # Встановлюємо стан очікування user_id
+    else:
+        await message.answer("❌ У вас немає прав для виконання цієї команди.")
 
-            # Отримуємо user_id
-            user_id = int(command_parts[1])
+# Обробник введення user_id після команди /add_user
+@dp.message(AddUserState.waiting_for_user_id)
+async def process_add_user(message: types.Message, state: FSMContext):
+    try:
+        # Отримуємо user_id
+        user_id = int(message.text)
 
-            # Перевіряємо, чи користувач вже існує
-            cursor.execute('SELECT * FROM users WHERE user_id = %s', (user_id,))
-            existing_user = cursor.fetchone()
-            if existing_user:
-                await message.answer(f"❌ Користувач із ID {user_id} вже існує в базі даних.")
-                return
-
+        # Перевіряємо, чи користувач вже існує
+        cursor.execute('SELECT * FROM users WHERE user_id = %s', (user_id,))
+        existing_user = cursor.fetchone()
+        if existing_user:
+            await message.answer(f"❌ Користувач із ID {user_id} вже існує в базі даних.")
+        else:
             # Отримуємо інформацію про користувача через Telegram API
             try:
                 user = await bot.get_chat(user_id)
@@ -352,12 +353,12 @@ async def add_user_handler(message: types.Message):
             # Додаємо користувача до бази даних
             add_user(user_id, username, first_name)
             await message.answer(f"✅ Користувач доданий:\nID: {user_id}\nІм'я: {first_name}\nНікнейм: @{username}")
-        except ValueError:
-            await message.answer("❌ Неправильний формат. user_id має бути числом.")
-        except Exception as e:
-            await message.answer(f"❌ Помилка при додаванні користувача: {e}")
-    else:
-        await message.answer("❌ У вас немає прав для виконання цієї команди.")
+    except ValueError:
+        await message.answer("❌ ID має бути числом. Спробуйте ще раз.")
+    except Exception as e:
+        await message.answer(f"❌ Помилка при додаванні користувача: {e}")
+    finally:
+        await state.clear()  # Очищаємо стан після завершення
 
 # Обробник команди /remove_user для ручного видалення користувача
 @dp.message(Command("remove_user"))
