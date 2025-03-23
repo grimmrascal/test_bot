@@ -362,8 +362,8 @@ async def stats_handler(message: types.Message):
     if message.from_user.id in ADMIN_USER_IDS:  # Перевіряємо, чи це адміністратор
         try:
             # Отримуємо кількість користувачів
-            cursor.execute('SELECT COUNT(*) FROM users')
-            total_users = cursor.fetchone()['count']
+            cursor.execute('SELECT COUNT(*) AS total_users FROM users')
+            total_users = cursor.fetchone()['total_users']
 
             # Отримуємо останню активність
             cursor.execute('''
@@ -379,7 +379,8 @@ async def stats_handler(message: types.Message):
             stats_message += f"👥 Загальна кількість користувачів: {total_users}\n\n"
             stats_message += "🕒 Остання активність:\n"
             for user in recent_activity:
-                stats_message += f"👤 {user['first_name']} (@{user['username'] if user['username'] else 'немає'}) - {user['last_active']}\n"
+                username = f"@{user['username']}" if user['username'] else "немає"
+                stats_message += f"👤 {user['first_name']} ({username}) - {user['last_active']}\n"
 
             await message.answer(stats_message)
         except Exception as e:
