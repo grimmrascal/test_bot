@@ -238,6 +238,16 @@ async def handle_unhandled_messages(message: types.Message):
     logging.info(f"Необроблене повідомлення: {message.text}")
     await message.answer("❌ Вибачте, я не розумію цю команду.")
 
+# Обробник команди /t
+@dp.message(Command("t"))
+async def t_handler(message: types.Message, state: FSMContext):
+    if message.from_user.id not in ADMIN_USER_IDS:  # Перевірка на адміністратора
+        await message.answer("❌ У вас немає прав для виконання цієї команди.")
+        return
+
+    await message.answer("📩 Надішліть текст або фото для розсилки.")
+    await state.set_state(BroadcastState.waiting_for_message)  # Встановлюємо стан очікування
+
 # Обробник введення тексту або фото для розсилки
 @dp.message(BroadcastState.waiting_for_message)
 async def process_broadcast_message(message: types.Message, state: FSMContext):
@@ -298,7 +308,7 @@ async def get_users_handler(message: types.Message):
         await message.answer("❌ У вас немає прав для виконання цієї команди.")
 
 # Обробник команди /stats для відображення статистики
-@router.message(Command("stats"))
+@dp.message(Command("stats"))
 async def stats_handler(message: types.Message):
     if message.from_user.id in ADMIN_USER_IDS:  # Перевіряємо, чи це адміністратор
         try:
