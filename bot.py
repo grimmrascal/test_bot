@@ -14,7 +14,6 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram import Router
-from aiogram.filters import ContentTypesFilter
 from aiogram.types import ContentType
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
@@ -234,7 +233,7 @@ async def send_now_handler(message: types.Message):
         await message.answer("❌ У вас немає прав для виконання цієї команди.")
 
 # Обробник введення тексту або фото для розсилки
-@dp.message(BroadcastState.waiting_for_message, ContentTypesFilter(content_types=[ContentType.TEXT, ContentType.PHOTO]))
+@dp.message(BroadcastState.waiting_for_message)
 async def process_broadcast_message(message: types.Message, state: FSMContext):
     try:
         users = get_all_users()
@@ -245,7 +244,7 @@ async def process_broadcast_message(message: types.Message, state: FSMContext):
             return
 
         # **Обробка фото**
-        if message.photo:
+        if message.content_type == ContentType.PHOTO:
             photo_id = message.photo[-1].file_id  # Отримуємо фото у найкращій якості
             caption = message.caption if message.caption else ""
 
@@ -258,7 +257,7 @@ async def process_broadcast_message(message: types.Message, state: FSMContext):
 
             await message.answer("✅ Фото успішно розіслано всім користувачам!")
         # **Обробка тексту**
-        elif message.text:
+        elif message.content_type == ContentType.TEXT:
             text_content = message.text.strip()
 
             if not text_content:
