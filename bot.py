@@ -94,28 +94,35 @@ def create_reaction_keyboard():
     ])
     return keyboard
 
-# Функція для створення постійної клавіатури з командами
+# Функція для створення клавіатури для звичайного користувача
 def create_main_keyboard():
-    keyboard = ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="🔄 Перезапустити"), KeyboardButton(text="📤 Розсилка")],
-            [KeyboardButton(text="✉️ Надіслати повідомлення")]
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text="🔄 Перезапустити", callback_data="command:/start"),
+            InlineKeyboardButton(text="📤 Розсилка", callback_data="command:/sendnow")
         ],
-        resize_keyboard=True,
-        one_time_keyboard=False
-    )
+        [
+            InlineKeyboardButton(text="✉️ Надіслати повідомлення", callback_data="command:/t")
+        ]
+    ])
     return keyboard
 
+# Функція для створення клавіатури для адміністратора
 def create_admin_keyboard():
-    keyboard = ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="📊 Статистика"), KeyboardButton(text="👥 Список користувачів")],
-            [KeyboardButton(text="➕ Додати користувача"), KeyboardButton(text="➖ Видалити користувача")],
-            [KeyboardButton(text="📤 Розсилка"), KeyboardButton(text="✉️ Надіслати повідомлення")]
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text="📊 Статистика", callback_data="command:/stats"),
+            InlineKeyboardButton(text="👥 Список користувачів", callback_data="command:/get_users")
         ],
-        resize_keyboard=True,
-        one_time_keyboard=False
-    )
+        [
+            InlineKeyboardButton(text="➕ Додати користувача", callback_data="command:/add_user"),
+            InlineKeyboardButton(text="➖ Видалити користувача", callback_data="command:/remove_user")
+        ],
+        [
+            InlineKeyboardButton(text="📤 Розсилка", callback_data="command:/sendnow"),
+            InlineKeyboardButton(text="✉️ Надіслати повідомлення", callback_data="command:/t")
+        ]
+    ])
     return keyboard
 
 # Функція для додавання користувача до бази даних
@@ -175,6 +182,28 @@ def get_random_image(query="cute, funny, kids, sunset, flowers"):
         if data["hits"]:
             return random.choice(data["hits"])["webformatURL"]
     return None
+
+@router.callback_query(lambda callback: callback.data.startswith("command:"))
+async def handle_command_callback(callback: types.CallbackQuery):
+    command = callback.data.split("command:")[1]  # Отримуємо команду з callback_data
+    message = callback.message
+
+    # Виконуємо відповідну команду
+    if command == "/stats":
+        await stats_handler(message)
+    elif command == "/get_users":
+        await get_users_handler(message)
+    elif command == "/add_user":
+        await add_user_start(message, state=FSMContext(bot, callback.from_user.id))
+    elif command == "/remove_user":
+        await remove_user_start(message, state=FSMContext(bot, callback.from_user.id))
+    elif command == "/sendnow":
+        await send_now_handler(message)
+    elif command == "/t":
+        await t_handler(message, state=FSMContext(bot, callback.from_user.id))
+
+    # Відповідаємо на callback, щоб уникнути помилок
+    await callback.answer()
 
 # Обробник команди /start
 @router.message(Command("start"))
