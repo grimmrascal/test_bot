@@ -26,7 +26,7 @@ load_dotenv()
 TOKEN = os.getenv("BOT_TOKEN")
 PIXABAY_API_KEY = os.getenv("PIXABAY_API_KEY")
 DATABASE_URL = os.getenv("DATABASE_URL")
-DOT_PASSWORD = os.getenv("BOT_PASSWORD")
+BOT_PASSWORD = os.getenv("BOT_PASSWORD")
 
 if not TOKEN:
     raise ValueError("❌ Токен не знайдено! Перевірте файл .env.")
