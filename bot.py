@@ -78,6 +78,28 @@ def create_reaction_keyboard():
     ])
     return keyboard
 
+# Функція для створення постійної клавіатури з командами
+def create_main_keyboard():
+    keyboard = ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=False)
+    keyboard.add(
+        KeyboardButton("/start"),
+        KeyboardButton("/sendnow"),
+        KeyboardButton("/t")
+    )
+    return keyboard
+
+def create_admin_keyboard():
+    keyboard = ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=False)
+    keyboard.add(
+        KeyboardButton("/stats"),
+        KeyboardButton("/get_users"),
+        KeyboardButton("/add_user"),
+        KeyboardButton("/remove_user"),
+        KeyboardButton("/sendnow"),
+        KeyboardButton("/t")
+    )
+    return keyboard
+
 # Функція для додавання користувача до бази даних
 def add_user(user_id, username, first_name):
     try:
@@ -145,7 +167,17 @@ async def start_handler(message: Message):
 
     update_last_active(user_id)  # Оновлюємо активність
 
-    await message.answer("🔒 Введіть пароль для доступу до бота:")
+    # Вибір клавіатури залежно від ролі
+    if user_id in ADMIN_USER_IDS:
+        keyboard = create_admin_keyboard()
+    else:
+        keyboard = create_main_keyboard()
+
+    # Відправляємо привітання та клавіатуру
+    await message.answer(
+        "🔒 Введіть пароль для доступу до бота:",
+        reply_markup=keyboard
+    )
 
     @router.message()  # Вкладений хендлер — це погана практика, потрібно винести окремо
     async def password_handler(password_message: Message):
