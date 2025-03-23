@@ -10,11 +10,15 @@ from aiogram.filters import Command
 from aiogram.types import Message
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import StatesGroup, State
+from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram import Router
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from pytz import timezone
 from dotenv import load_dotenv
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
 # Завантаження змінних середовища
 load_dotenv()
@@ -34,7 +38,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(
 
 # Ініціалізація бота і диспетчера
 bot = Bot(token=TOKEN)
-dp = Dispatcher()
+dp = Dispatcher(storage=MemoryStorage())
 
 # Ініціалізація Router
 router = Router()
@@ -61,6 +65,16 @@ cursor.execute('''
     )
 ''')
 conn.commit()
+
+# Стани для кожної групи станів
+class AddUserState(StatesGroup):
+    waiting_for_user_id = State()
+
+class BroadcastState(StatesGroup):
+    waiting_for_message = State()
+
+class RemoveUserState(StatesGroup):
+    waiting_for_user_id = State()
 
 # Додавання стовпця last_active до таблиці users
 cursor.execute('''
@@ -217,32 +231,32 @@ async def send_now_handler(message: types.Message):
     else:
         await message.answer("❌ У вас немає прав для виконання цієї команди.")
 
-# Обробник команди /t для розсилки тексту або фото всім користувачам, крім відправника
+# Обробник команди /t для початку розсилки
 @dp.message(Command("t"))
-async def broadcast_handler(message: types.Message):
-    if message.from_user.id not in ADMIN_USER_IDS:
+async def broadcast_start(message: types.Message, state: FSMContext):
+    if message.from_user.id in ADMIN_USER_IDS:  # Перевіряємо, чи це адміністратор
+        await message.answer("Введіть текст або прикріпіть фото для розсилки:")
+        await state.set_state(BroadcastState.waiting_for_message)  # Встановлюємо стан очікування повідомлення
+    else:
         await message.answer("❌ У вас немає прав для виконання цієї команди.")
-        return
 
+# Обробник введення тексту або фото для розсилки
+@dp.message(BroadcastState.waiting_for_message, content_types=["text", "photo"])
+async def process_broadcast_message(message: types.Message, state: FSMContext):
     try:
         users = get_all_users()
 
         if not users:
             await message.answer("❌ Немає користувачів для розсилки.")
+            await state.clear()  # Очищаємо стан
             return
 
         # **Обробка фото**
         if message.photo:
             photo_id = message.photo[-1].file_id  # Отримуємо фото у найкращій якості
-            
-            # Видаляємо текст команди `/t` з підпису, якщо він є
             caption = message.caption if message.caption else ""
-            caption = caption.replace("/t", "").strip()  # Видаляємо команду та зайві пробіли
 
             for user in users:
-                if user['user_id'] == message.from_user.id:
-                    continue  # Пропускаємо відправника
-
                 try:
                     await bot.send_photo(chat_id=user['user_id'], photo=photo_id, caption=caption or None)
                     logging.info(f"📨 Фото надіслано користувачу {user['user_id']}")
@@ -250,29 +264,27 @@ async def broadcast_handler(message: types.Message):
                     logging.warning(f"⚠️ Не вдалося надіслати фото користувачу {user['user_id']}: {e}")
 
             await message.answer("✅ Фото успішно розіслано всім користувачам!")
-            return  # ВАЖЛИВО! ВИХОДИМО З ФУНКЦІЇ, ЩОБ НЕ ОБРОБЛЯТИ ТЕКСТ
+        # **Обробка тексту**
+        elif message.text:
+            text_content = message.text.strip()
 
-        # **Обробка тексту (якщо фото немає)**
-        text_content = message.text[len("/t"):].strip()  # Видаляємо "/t" і зайві пробіли
+            if not text_content:
+                await message.answer("❌ Ви не написали текст для розсилки!")
+                return
 
-        if not text_content:
-            await message.answer("❌ Ви не написали текст для розсилки!")
-            return
+            for user in users:
+                try:
+                    await bot.send_message(chat_id=user['user_id'], text=text_content)
+                    logging.info(f"📨 Повідомлення надіслано користувачу {user['user_id']}")
+                except Exception as e:
+                    logging.warning(f"⚠️ Не вдалося надіслати повідомлення користувачу {user['user_id']}: {e}")
 
-        for user in users:
-            if user['user_id'] == message.from_user.id:
-                continue  # Пропускаємо відправника
-
-            try:
-                await bot.send_message(user['user_id'], text_content)
-                logging.info(f"📨 Повідомлення надіслано користувачу {user['user_id']}")
-            except Exception as e:
-                logging.warning(f"⚠️ Не вдалося надіслати повідомлення користувачу {user['user_id']}: {e}")
-
-        await message.answer("✅ Повідомлення успішно розіслано всім користувачам!")
+            await message.answer("✅ Повідомлення успішно розіслано всім користувачам!")
 
     except Exception as e:
         await message.answer(f"❌ Помилка при розсилці: {e}")
+    finally:
+        await state.clear()  # Очищаємо стан після завершення
 
 # Обробник команди /get_users для отримання списку учасників
 @dp.message(Command("get_users"))
@@ -362,35 +374,37 @@ async def process_add_user(message: types.Message, state: FSMContext):
 
 # Обробник команди /remove_user для ручного видалення користувача
 @dp.message(Command("remove_user"))
-async def remove_user_handler(message: types.Message):
+async def remove_user_start(message: types.Message, state: FSMContext):
     if message.from_user.id in ADMIN_USER_IDS:  # Перевіряємо, чи це адміністратор
-        try:
-            # Розділяємо текст команди на частини
-            command_parts = message.text.split(maxsplit=1)
-            if len(command_parts) < 2:
-                await message.answer("❌ Неправильний формат. Використовуйте: /remove_user <user_id>")
-                return
-
-            # Отримуємо user_id
-            user_id = int(command_parts[1])
-
-            # Перевіряємо, чи користувач існує
-            cursor.execute('SELECT * FROM users WHERE user_id = %s', (user_id,))
-            existing_user = cursor.fetchone()
-            if not existing_user:
-                await message.answer(f"❌ Користувача з ID {user_id} не знайдено в базі даних.")
-                return
-
-            # Видаляємо користувача
-            remove_user(user_id)
-            await message.answer(f"✅ Користувач із ID {user_id} успішно видалений.")
-        except ValueError:
-            await message.answer("❌ Неправильний формат. user_id має бути числом.")
-        except Exception as e:
-            await message.answer(f"❌ Помилка при видаленні користувача: {e}")
+        await message.answer("Введіть ID користувача, якого потрібно видалити:")
+        await state.set_state(RemoveUserState.waiting_for_user_id)  # Встановлюємо стан очікування user_id
     else:
         await message.answer("❌ У вас немає прав для виконання цієї команди.")
 
+# Обробник введення user_id після команди /remove_user
+@dp.message(RemoveUserState.waiting_for_user_id)
+async def process_remove_user(message: types.Message, state: FSMContext):
+    try:
+        # Отримуємо user_id
+        user_id = int(message.text)
+
+        # Перевіряємо, чи користувач існує
+        cursor.execute('SELECT * FROM users WHERE user_id = %s', (user_id,))
+        existing_user = cursor.fetchone()
+        if not existing_user:
+            await message.answer(f"❌ Користувача з ID {user_id} не знайдено в базі даних.")
+        else:
+            # Видаляємо користувача
+            remove_user(user_id)
+            await message.answer(f"✅ Користувач із ID {user_id} успішно видалений.")
+    except ValueError:
+        await message.answer("❌ ID має бути числом. Спробуйте ще раз.")
+    except Exception as e:
+        await message.answer(f"❌ Помилка при видаленні користувача: {e}")
+    finally:
+        await state.clear()  # Очищаємо стан після завершення
+
+# Обробник команди для інлайн кнопок
 @router.callback_query(lambda callback: callback.data.startswith("reaction:"))
 async def reaction_handler(callback: types.CallbackQuery):
     if callback.data == "reaction:like":
