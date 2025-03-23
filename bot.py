@@ -228,32 +228,42 @@ async def start_handler(message: Message):
         reply_markup=keyboard
     )
 
-    @router.message()  # Вкладений хендлер — це погана практика, потрібно винести окремо
-    async def password_handler(message: Message):
-        entered_password = password_message.text
-        correct_password = os.getenv("BOT_PASSWORD")  
+# Окремий обробник для перевірки пароля
+@router.message()
+async def password_handler(message: Message):
+    entered_password = message.text.strip()  # Видаляємо зайві пробіли
+    correct_password = os.getenv("BOT_PASSWORD")  # Завантажуємо пароль із .env
 
-        if entered_password == correct_password:
-            add_user(user_id, username, first_name)
+    if not correct_password:
+        await message.answer("❌ Пароль не налаштований. Зверніться до адміністратора.")
+        logging.error("❌ Пароль не завантажено з файлу .env.")
+        return
 
-            await password_message.answer(f"✅ Пароль правильний! Привіт, {first_name}! Ти додана у список розсилки.")
-            logging.info(f"✅ Користувач {user_id} ({username}) доданий у список розсилки.")
+    if entered_password == correct_password:
+        user_id = message.from_user.id
+        username = message.from_user.username
+        first_name = message.from_user.first_name
 
-            new_user_text = (
-                f"🆕 Новий користувач!\n"
-                f"👤 Ім'я: {first_name}\n"
-                f"🆔 ID: {user_id}\n"
-                f"🔗 @{username if username else 'немає'}"
-            )
-            for admin_id in ADMIN_USER_IDS:
-                try:
-                    await password_message.bot.send_message(admin_id, new_user_text)
-                except Exception as e:
-                    logging.warning(f"⚠️ Не вдалося повідомити адміна {admin_id}: {e}")
+        add_user(user_id, username, first_name)  # Додаємо користувача до бази даних
 
-        else:
-            await password_message.answer("❌ Неправильний пароль. Доступ заборонено.")
-            logging.warning(f"❌ Невдала спроба доступу користувача {user_id} ({username}).")
+        await message.answer(f"✅ Пароль правильний! Привіт, {first_name}! Ви отримали доступ до бота.")
+        logging.info(f"✅ Користувач {user_id} ({username}) успішно ввів пароль.")
+
+        # Повідомляємо адміністраторів про нового користувача
+        new_user_text = (
+            f"🆕 Новий користувач!\n"
+            f"👤 Ім'я: {first_name}\n"
+            f"🆔 ID: {user_id}\n"
+            f"🔗 @{username if username else 'немає'}"
+        )
+        for admin_id in ADMIN_USER_IDS:
+            try:
+                await bot.send_message(admin_id, new_user_text)
+            except Exception as e:
+                logging.warning(f"⚠️ Не вдалося повідомити адміна {admin_id}: {e}")
+    else:
+        await message.answer("❌ Неправильний пароль. Спробуйте ще раз.")
+        logging.warning(f"❌ Невдала спроба доступу користувача {message.from_user.id} ({message.from_user.username}).")
 
 # Обробник команди /sendnow для миттєвої розсилки
 @dp.message(Command("sendnow"))
