@@ -259,6 +259,14 @@ async def process_broadcast_message(message: types.Message, state: FSMContext):
             await state.clear()  # Очищаємо стан
             return
 
+        # Виключаємо відправника з розсилки
+        users = [user for user in users if user['user_id'] != message.from_user.id]
+
+        if not users:
+            await message.answer("❌ Немає інших користувачів для розсилки.")
+            await state.clear()  # Очищаємо стан
+            return
+
         # **Обробка фото**
         if message.content_type == ContentType.PHOTO:
             photo_id = message.photo[-1].file_id  # Отримуємо фото у найкращій якості
