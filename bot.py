@@ -229,7 +229,7 @@ async def start_handler(message: Message):
     )
 
     @router.message()  # Вкладений хендлер — це погана практика, потрібно винести окремо
-    async def password_handler(password_message: Message):
+    async def password_handler(message: Message):
         entered_password = password_message.text
         correct_password = os.getenv("BOT_PASSWORD")  
 
