@@ -356,14 +356,15 @@ async def get_users_handler(message: types.Message):
     else:
         await message.answer("❌ У вас немає прав для виконання цієї команди.")
 
-# Обробник команди /stats для відображення статистики
 @dp.message(Command("stats"))
 async def stats_handler(message: types.Message):
     if message.from_user.id in ADMIN_USER_IDS:  # Перевіряємо, чи це адміністратор
         try:
             # Отримуємо кількість користувачів
             cursor.execute('SELECT COUNT(*) AS total_users FROM users')
-            total_users = cursor.fetchone()['total_users']
+            total_users = cursor.fetchone()
+            if not total_users:
+                total_users = {'total_users': 0}
 
             # Отримуємо останню активність
             cursor.execute('''
@@ -376,11 +377,14 @@ async def stats_handler(message: types.Message):
 
             # Формуємо повідомлення
             stats_message = f"📊 Статистика:\n\n"
-            stats_message += f"👥 Загальна кількість користувачів: {total_users}\n\n"
+            stats_message += f"👥 Загальна кількість користувачів: {total_users['total_users']}\n\n"
             stats_message += "🕒 Остання активність:\n"
-            for user in recent_activity:
-                username = f"@{user['username']}" if user['username'] else "немає"
-                stats_message += f"👤 {user['first_name']} ({username}) - {user['last_active']}\n"
+            if recent_activity:
+                for user in recent_activity:
+                    username = f"@{user['username']}" if user['username'] else "немає"
+                    stats_message += f"👤 {user['first_name']} ({username}) - {user['last_active']}\n"
+            else:
+                stats_message += "Немає даних про активність.\n"
 
             await message.answer(stats_message)
         except Exception as e:
