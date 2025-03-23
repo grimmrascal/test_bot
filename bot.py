@@ -43,7 +43,7 @@ dp.include_router(router)
 kyiv_tz = timezone("Europe/Kyiv")
 
 # Список Telegram user_id для отримання повідомлень від бота
-ADMIN_USER_IDS = [471637263, 5142786008, 646146668]  # Замініть на список реальних user_id
+ADMIN_USER_IDS = [471637263, 646146668]  # Замініть на список реальних user_id
 
 # Підключення до бази даних PostgreSQL
 conn = psycopg2.connect(DATABASE_URL, sslmode="require")
@@ -52,10 +52,11 @@ cursor = conn.cursor(cursor_factory=RealDictCursor)
 # Створення таблиці користувачів
 cursor.execute('''
     CREATE TABLE IF NOT EXISTS users (
-        id SERIAL PRIMARY KEY,
-        user_id BIGINT UNIQUE NOT NULL,
-        username TEXT,
-        first_name TEXT
+        id SERIAL PRIMARY KEY,               -- Унікальний ідентифікатор запису
+        user_id BIGINT UNIQUE NOT NULL,      -- Унікальний Telegram ID користувача
+        username TEXT,                       -- Ім'я користувача (нікнейм)
+        first_name TEXT,                     -- Ім'я користувача
+        last_active TIMESTAMP DEFAULT NOW()  -- Час останньої активності користувача
     )
 ''')
 conn.commit()
@@ -74,15 +75,29 @@ def create_reaction_keyboard():
 def add_user(user_id, username, first_name):
     try:
         cursor.execute('''
-            INSERT INTO users (user_id, username, first_name)
-            VALUES (%s, %s, %s)
-            ON CONFLICT (user_id) DO NOTHING
+            INSERT INTO users (user_id, username, first_name, last_active)
+            VALUES (%s, %s, %s, NOW())
+            ON CONFLICT (user_id) DO UPDATE SET last_active = NOW()
         ''', (user_id, username, first_name))
         conn.commit()
-        logging.info(f"Користувач {user_id} доданий до бази даних.")
+        logging.info(f"Користувач {user_id} доданий або оновлений у базі даних.")
     except Exception as e:
-        conn.rollback()  # Скасовуємо транзакцію у разі помилки
+        conn.rollback()
         logging.error(f"Помилка при додаванні користувача {user_id}: {e}")
+
+# Функція для оновлення часу останньої активності користувача
+def update_last_active(user_id):
+    try:
+        cursor.execute('''
+            UPDATE users
+            SET last_active = NOW()
+            WHERE user_id = %s
+        ''', (user_id,))
+        conn.commit()
+        logging.info(f"Оновлено час останньої активності для користувача {user_id}.")
+    except Exception as e:
+        conn.rollback()
+        logging.error(f"Помилка при оновленні активності користувача {user_id}: {e}")
 
 # Функція для видалення користувача з бази даних
 def remove_user(user_id):
@@ -105,7 +120,7 @@ def get_all_users():
         return []
 
 # Функція для отримання випадкового зображення за темою
-def get_random_image(query="funny, kids, sunset, motivation"):
+def get_random_image(query="cute, funny, kids, sunset, flowers"):
     url = f"https://pixabay.com/api/?key={PIXABAY_API_KEY}&q={query}&image_type=photo&per_page=50"
     response = requests.get(url)
     if response.status_code == 200:
@@ -116,10 +131,12 @@ def get_random_image(query="funny, kids, sunset, motivation"):
 
 # Обробник команди /start
 @router.message(Command("start"))
-async def start_handler(message: Message):  # Використовуємо правильний імпортований клас
+async def start_handler(message: Message):
     user_id = message.from_user.id
     username = message.from_user.username
     first_name = message.from_user.first_name
+
+    update_last_active(user_id)  # Оновлюємо активність
 
     await message.answer("🔒 Введіть пароль для доступу до бота:")
 
@@ -228,6 +245,38 @@ async def get_users_handler(message: types.Message):
     else:
         await message.answer("❌ У вас немає прав для виконання цієї команди.")
 
+# Обробник команди /stats для відображення статистики
+@router.message(Command("stats"))
+async def stats_handler(message: types.Message):
+    if message.from_user.id in ADMIN_USER_IDS:  # Перевіряємо, чи це адміністратор
+        try:
+            # Отримуємо кількість користувачів
+            cursor.execute('SELECT COUNT(*) FROM users')
+            total_users = cursor.fetchone()['count']
+
+            # Отримуємо останню активність
+            cursor.execute('''
+                SELECT username, first_name, last_active
+                FROM users
+                ORDER BY last_active DESC
+                LIMIT 5
+            ''')
+            recent_activity = cursor.fetchall()
+
+            # Формуємо повідомлення
+            stats_message = f"📊 Статистика:\n\n"
+            stats_message += f"👥 Загальна кількість користувачів: {total_users}\n\n"
+            stats_message += "🕒 Остання активність:\n"
+            for user in recent_activity:
+                stats_message += f"👤 {user['first_name']} (@{user['username'] if user['username'] else 'немає'}) - {user['last_active']}\n"
+
+            await message.answer(stats_message)
+        except Exception as e:
+            logging.error(f"Помилка при отриманні статистики: {e}")
+            await message.answer("❌ Помилка при отриманні статистики.")
+    else:
+        await message.answer("❌ У вас немає прав для виконання цієї команди.")
+
 # Обробник команди /add_user для ручного додавання користувача
 @dp.message(Command("add_user"))
 async def add_user_handler(message: types.Message):
@@ -298,8 +347,7 @@ async def remove_user_handler(message: types.Message):
             await message.answer(f"❌ Помилка при видаленні користувача: {e}")
     else:
         await message.answer("❌ У вас немає прав для виконання цієї команди.")
-        
-# Оброюник кнопок реакції
+
 @router.callback_query(lambda callback: callback.data.startswith("reaction:"))
 async def reaction_handler(callback: types.CallbackQuery):
     if callback.data == "reaction:like":
@@ -310,12 +358,12 @@ async def reaction_handler(callback: types.CallbackQuery):
         logging.info(f"Користувач {callback.from_user.id} запросив нове фото")
 
         # Завантажуємо нове фото
-        image = get_random_image(query="kids, sunset")
+        image = get_random_image(query="motivation")
         if image:
             await bot.send_photo(
                 callback.from_user.id,
                 photo=image,
-                caption="Ось нове фото для тебе!",
+                caption="Ось нове фото для вас!",
                 reply_markup=create_reaction_keyboard()
             )
         else:
@@ -324,9 +372,8 @@ async def reaction_handler(callback: types.CallbackQuery):
 # Функція для розсилки випадкових приємних повідомлень
 async def send_random_messages():
     messages = [
-        "Ти чудовий!", "Не забувай посміхатися!", "В тебе все вийде!", "Ти особливий!"
+        "Ти чудова!", "Не забувай посміхатися!", "В тебе все вийде!", "Ти особлива!", "Ти супер!"
     ]
-
     for user in get_all_users():
         try:
             message = random.choice(messages)
