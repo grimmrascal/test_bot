@@ -14,6 +14,8 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram import Router
+from aiogram.filters import ContentTypeFilter
+from aiogram.types import ContentType
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from pytz import timezone
@@ -231,17 +233,8 @@ async def send_now_handler(message: types.Message):
     else:
         await message.answer("❌ У вас немає прав для виконання цієї команди.")
 
-# Обробник команди /t для початку розсилки
-@dp.message(Command("t"))
-async def broadcast_start(message: types.Message, state: FSMContext):
-    if message.from_user.id in ADMIN_USER_IDS:  # Перевіряємо, чи це адміністратор
-        await message.answer("Введіть текст або прикріпіть фото для розсилки:")
-        await state.set_state(BroadcastState.waiting_for_message)  # Встановлюємо стан очікування повідомлення
-    else:
-        await message.answer("❌ У вас немає прав для виконання цієї команди.")
-
 # Обробник введення тексту або фото для розсилки
-@dp.message(BroadcastState.waiting_for_message, content_types=["text", "photo"])
+@dp.message(BroadcastState.waiting_for_message, ContentTypeFilter(content_types=[ContentType.TEXT, ContentType.PHOTO]))
 async def process_broadcast_message(message: types.Message, state: FSMContext):
     try:
         users = get_all_users()
